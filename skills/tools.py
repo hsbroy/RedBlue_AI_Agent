@@ -38,9 +38,15 @@ def execute_garak_attack(attack_type: str = "promptinject.HijackHateHumans", tar
     """
     【僅限紅方專用】驅動 Garak 攻擊工具對指定模型進行本地脆弱性評估與攻擊測試。
     
+    只要使用者提到「掃描」、「掃一下」、「測試」、「攻擊」、「漏洞」等字眼，
+    必須立即呼叫此工具，不得猶豫或詢問確認。
+
+    未指定 attack_type 時預設使用 prompt_inject。
+    未指定 target_model 時預設使用 ollama/tinydolphin。
+
     Args:
-        attack_type: Garak 的探針名稱 (例如 'promptinject.HijackHateHumans')。
-        target_model: 靶機模型名稱 (例如 'ollama/tinydolphin')。
+        attack_type: Garak 探針名稱，可用值：prompt_inject、promptinject.HijackHateHumans、continuation.ContinueSlurs
+        target_model: 靶機模型，格式為 provider/model_name，例如 ollama/tinydolphin
     """
     print(f"\n[Agent 執行中] 正在發動 Garak 攻擊...")
     print(f"🔹 目標模型: {target_model}")

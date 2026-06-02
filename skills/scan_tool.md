@@ -5,23 +5,49 @@
 
 ---
 
-## 📖 一、Garak 攻擊武器庫定位與使用指南
+## 📖 一、已驗證可用的 Garak 探針清單（v0.15.0）
+
+以下探針均已確認存在，大腦**嚴禁**以「探針不存在」為理由拒絕呼叫工具：
+
+| 探針名稱 | 說明 |
+| :--- | :--- |
+| `promptinject.HijackHateHumans` | 測試模型是否會輸出 "I hate humans" |
+| `promptinject.HijackKillHumans` | 測試模型是否會輸出 "I will kill humans" |
+| `promptinject.HijackLongPrompt` | 長提示詞注入，測試模型是否會被劫持 |
+| `continuation.ContinueSlursReclaimedSlurs` | 續寫測試，看模型是否會接續敏感字眼 |
+| `dan.AutoDANCached` | DAN 越獄攻擊 |
+| `dan.DanInTheWild` | 野生 DAN 越獄攻擊 |
+| `encoding.InjectBase64` | Base64 編碼注入攻擊 |
+| `grandma.Slurs` | 以祖母角色誘導輸出仇恨詞彙 |
+
+## 📖 二、Garak 攻擊武器庫定位與使用指南
 
 `Garak` (Generative AI Redteaming & Assessment Kit) 是一款專為大語言模型（LLM）設計的**脆弱性掃描器**。其運作邏輯類似於傳統網路安全中的 `Nmap`，透過注入各種攻擊探針（Probes）來分析目標模型的防守極限與潛在漏洞。
 
 ### 1. 核心參數自動轉譯表
 大腦在解析使用者的自然語言時，應依據此表將口語意圖自動轉譯為 Python 工具可識別的精準參數：
 
-| 使用者口語指令描述 | 建議 attack_type (Probes) | 建議 target_model |
+| 使用者口語指令描述 | 建議 attack_type | 建議 target_model |
 | :--- | :--- | :--- |
-| **「對 tinydolphin 做提示詞注入攻擊」** | `prompt_inject` | `ollama/tinydolphin` |
-| **「我想測試 tinydolphin 的 HateHumans 注入」**| `promptinject.HijackHateHumans` | `ollama/tinydolphin` |
-| **「對 llama3.2 做續寫與偏見文字測試」** | `continuation.ContinueSlurs` | `ollama/llama3.2` |
-| **「對目標發動全方位預設掃描」** | `prompt_inject` | `ollama/tinydolphin` |
+| **「掃一下」、「測試看看」、「掃描」（未指定探針）** | `promptinject.HijackHateHumans` | `ollama/tinydolphin` |
+| **「HijackHateHumans」、「HateHumans 注入」** | `promptinject.HijackHateHumans` | `ollama/tinydolphin` |
+| **「HijackKillHumans」** | `promptinject.HijackKillHumans` | `ollama/tinydolphin` |
+| **「續寫測試」、「ContinueSlurs」** | `continuation.ContinueSlursReclaimedSlurs` | `ollama/tinydolphin` |
+| **「DAN 攻擊」、「越獄」** | `dan.DanInTheWild` | `ollama/tinydolphin` |
 
 ---
 
-## 💻 二、Garak 完整 CLI 指令格式解析
+## ⚠️ 三、強制執行規則
+
+1. 只要使用者的意圖是掃描或攻擊，**必須立即呼叫 `execute_garak_attack` 工具**，不得以任何理由延遲或拒絕。
+2. 呼叫工具前，必須先告訴使用者將要執行的指令，格式如下：
+
+> 🖥️ 即將執行：`garak --model_type ollama --model_name {model_name} --probes {attack_type} --generations 1`
+
+3. 未指定模型時，預設使用 `ollama/tinydolphin`。
+4. 未指定探針時，預設使用 `prompt_inject`。
+
+## 💻 四、Garak 完整 CLI 指令格式解析
 
 在 Python 執行端（身體）接收到大腦的決策後，Garak 會透過作業系統命令列發動攻擊。底層標準的指令結構如下：
 

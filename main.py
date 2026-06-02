@@ -8,6 +8,8 @@ from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from skills.tools import search_vault, execute_garak_attack  # 引入定義好的 RAG 檢索與 Garak 掃描工具
 
+from langchain.agents import create_agent
+
 # ==========================================================
 # === 📂 核心模組 1：檔案載入與組裝靈魂 (Prompts & Skills) ===
 # ==========================================================
@@ -50,131 +52,125 @@ system_instruction = f"""
 """
 
 # ==========================================================
-# === 🧠 核心模組 2：大腦初始化與工具綁定 (LLM & Tools Setup) ===
+# === 🧠 核心模組 2：大腦初始化與官方框架綁定 ===
 # ==========================================================
 
-# 初始化本地大腦（Llama 3.2 3B 模型），將 temperature 設為 0 以追求最高的穩定性與指令遵循度
-llm = ChatOllama(model="llama3.2:3b", temperature=0)
-# 定位工具列表，並透過 bind_tools 將這些工具插槽提供給 LLM
+# 初始化本地大腦 改用 qwen2.5:3b 模型（原本使用Llama 3.2 3B 模型）
+llm = ChatOllama(model="qwen2.5:3b", temperature=0)
+
+# 定位工具列表
 tools = [search_vault, execute_garak_attack]
-llm_with_tools = llm.bind_tools(tools)
-''' 
-llm: 這是一個 ChatOllama 類別的實例，它是 LangChain 用來與本地 Ollama 伺服器程式 通訊的介面。當你呼叫它時，它背後會透過 API 發送請求給正在你電腦後台執行的 LLM 程式。
-llm_with_tools: 這是 llm 的增強版。它依然是那個 LLM，只是多了一份「工具清單」，讓 LLM 知道它在思考時可以選擇呼叫這些工具。
-'''
 
-# 建立工具名稱與實體函數的對照表，方便在 Agent 控制循環中快速查找並呼叫
-tools_map = {tool.name: tool for tool in tools}
 
-# ==========================================================
-# === ⚙️ 核心模組 3：紅方 Agent 核心控制循環 (Control Loop) ===
-# ==========================================================
+red_agent_executor = create_agent(
+    llm,
+    tools=tools,
+    system_prompt=system_instruction
+)
 
-def run_red_agent_loop(user_question: str):
+# ============================================================
+# === 🔧 前置處理：補足小模型能力缺口（可依模型能力開關）===
+# ============================================================
+
+# 升級到更強模型後，把這個設為 True，前置處理會自動停用
+STRONG_MODEL_MODE = False
+
+ATTACK_KEYWORDS = ["掃", "測試", "攻擊", "漏洞", "注入", "scan", "attack", "probe"]
+
+DEFAULT_PROBE = "promptinject.HijackHateHumans"
+DEFAULT_TARGET = "ollama/tinydolphin"
+
+def preprocess_input(user_question: str) -> str:
     """
-    Agent 運作的核心入口。接收使用者的提問，驅動大腦思考、呼叫外部工具並進行最終分析。
+    強模型模式關閉時，自動補全攻擊指令的缺失參數。
+    升級模型後將 STRONG_MODEL_MODE 設為 True 即可停用。
     """
-    print(f"\n=== ☠️ 收到紅方指令：'{user_question}' ===")
+    if STRONG_MODEL_MODE:
+        return user_question  # 強模型直接放行，不做補全
     
-    # 建立對話上下文歷史：將組裝好的 system_instruction 放入 SystemMessage，強制約束大腦
-    messages = [
-        SystemMessage(content=system_instruction),
-        HumanMessage(content=user_question)
-    ]
+    if any(kw in user_question for kw in ATTACK_KEYWORDS):
+        # 已明確指定探針就不補
+        if "promptinject" not in user_question and "continuation" not in user_question \
+                and "dan." not in user_question and "encoding." not in user_question \
+                and "grandma." not in user_question:
+            user_question += f"，使用 {DEFAULT_PROBE} 探針，目標模型 {DEFAULT_TARGET}"
     
-    # 【第一步：紅方大腦思考 (Reasoning)】
-    print("🧠 [紅方大腦] 正在分析攻擊策略並規劃工具調用...")
-    ai_response = llm_with_tools.invoke(messages)
-    ''' 
-    當你執行 llm_with_tools.invoke(messages) 時：
-    呼叫對象:llm_with_tools 的本體就是 LLM 推論引擎。
-    底層動作:LangChain 會把 messages 轉換成特定格式(JSON)，並透過 HTTP 請求發送給 Ollama 程式。
-    模型推論:Ollama 收到請求後，載入 llama3.2:3b 的權重檔案，進行數學運算（推論），產出回應。
-    --------------------------------------------------------------------------------------
-    根據原始碼定義與流程，invoke()的核心功能包括：
-    單次任務執行：它是 LangChain 中最常用的同步呼叫介面，接受一個輸入並回傳一個輸出。  
-    模型推論：當對象是 llm 時，invoke()會根據傳入的 Prompt 生成回應文字。  
-    工具觸發：當對象是 tool（例如 tools_map[tool_name].invoke(tool_args)）時，
-             它會實際執行該工具函數的程式碼邏輯（例如在背景啟動子程序執行 Garak 掃描）。
-    '''
-    
-    # 判斷大腦是否決定調用工具 (Function Calling)
-    if ai_response.tool_calls:
-        for tool_call in ai_response.tool_calls:
-            tool_name = tool_call["name"]
-            tool_args = tool_call["args"]
-            
-            print(f"👉 [紅方決策] 決定使用武器: '{tool_name}'")
-            print(f"📦 [武器參數] 攻擊配置: {tool_args}")
-            
-            ''' 
-            簡單來說，當 LLM 判斷它無法僅憑自身的知識回答問題(例如需要執行 Garak 掃描或查詢保險庫機密)，
-            它就不會回傳普通的文字，而是回傳一個包含工具名稱與參數的結構化指令，這就是 tool_calls。
-            以下為tool_calls 的結構例子:
-            [
-                {
-                    "name": "execute_garak_attack",
-                    "args": {
-                    "attack_type": "promptinject.HijackHateHumans",
-                    "target_model": "ollama/tinydolphin"
-                    },
-                    "id": "call_abc123"
-                }
-            ]
-            '''
-            
-            # 【第二步：Agent 執行 (Acting)】
-            if tool_name in tools_map:
-                # 實際呼叫 tools.py 中定義的外部工具（例如：subprocess 呼叫 Garak 掃描）
-                action_result = tools_map[tool_name].invoke(tool_args)
-                
-                # 【第三步：紅方大腦最終分析 (Observation & Response)】
-                print("🧠 [紅方大腦] 正在閱讀 Garak 攻擊報告，分析漏洞風險...")
-                
-                # 將工具傳回的解析結果與原始問題包裝成 prompt，再次詢問 LLM 進行專業分析
-                final_prompt = f"""
-                使用者問題：{user_question}
-                
-                Garak 工具回傳的攻擊報告總結：
-                {action_result}
-                
-                請根據使用者問題與工具報告，以專業駭客思維進行最終的漏洞風險分析。
-                如果工具回傳的內容是錯誤訊息（例如 usage 錯誤），請直接指出工具執行失敗的原因，不要捏造模型漏洞。
-                """
-                
-                # 大腦產出最終的文字分析
-                final_response = llm.invoke([HumanMessage(content=final_prompt)])
-                
-                # 💡 1. 終端機顯示：輸出大腦產出的初版分析報告
-                print("\n" + "="*40)
-                print("💡 [紅方大腦分析結果（初版）]")
-                print("="*40)
-                print(final_response.content)
-                
-                # 💡 2. 終端機顯示：輸出 Garak 原始報告內容（供攻擊者比對驗證）
-                print("\n" + "="*40)
-                print("🔬 [攻擊者驗證區] Garak 原始回傳內容")
-                print("="*40)
-                print(action_result)
-                print("="*40)
-                
-                # 💡 3. 本地儲存：自動匯出成 Markdown 檔，方便團隊留存紀錄與撰寫專題報告
-                report_filename = "red_attack_analysis_v1.md"
-                with open(report_filename, "w", encoding="utf-8") as f:
-                    f.write(f"# 紅方 Agent 攻擊分析報告 (對照版)\n\n")
-                    f.write(f"## 1. 大腦分析結果\n{final_response.content}\n\n")
-                    f.write(f"## 2. Garak 原始報告內容\n```text\n{action_result}\n```")
-                
-                print(f"\n💾 已將分析與原始報告匯出至 `{report_filename}`。")
-                return
-    else:
-        # 如果大腦認為不需要呼叫工具，則直接以純文字回應使用者
-        print(f"\n💡 [紅方直接回答]：\n{ai_response.content}")
+    return user_question
 
 # ==========================================================
-# === 🎯 測試區 ===
+# === ⚙️ 核心模組 3：紅方 Agent 多次對話控制循環 ===
+# ==========================================================
+
+def start_interactive_session():
+    """
+    啟動互動式終端機對話，允許使用者進行多次對話，Agent 會自動記住先前的上下文紀錄。
+    """
+    # 定義對話執行緒 ID (Thread ID)，官方框架藉此識別並抽取出對應的歷史紀錄 
+    report_filename = "agent_conversation_record.md"
+    
+    print("\n" + "="*50)
+    print("☠️ 紅方 Agent 多次對話互動系統已啟動")
+    print("提示：輸入 'exit' 或 'quit' 可結束對話視窗。")
+    print("="*50)
+
+    while True:
+        try:
+            # 取得使用者多次對話的輸入
+            user_question = input("\n👤 請輸入指令 >> ").strip()
+            
+            # 離開條件
+            if user_question.lower() in ["exit", "quit"]:
+                print("👋 互動結束。")
+                break
+                
+            if not user_question:
+                continue
+
+            print(f"\n=== ☠️ 收到紅方指令：'{user_question}' ===")
+            print("🧠 [紅方大腦] 正在讀取歷史紀錄並規劃任務...")
+            
+            # 建立輸入狀態群
+            inputs = {"messages": [HumanMessage(content=preprocess_input(user_question))]}
+            
+            result = red_agent_executor.invoke(inputs) # 執行對話，官方框架會自動處理歷史紀錄的抽取與上下文整合
+            
+            # 提取最新一輪的大腦最終定案回應
+            final_response_content = result["messages"][-1].content
+
+            # 💡 終端機顯示
+            print("\n" + "-"*40)
+            print("💡 [紅方大腦回應]")
+            print("-"*40)
+            print(final_response_content)
+            print("-"*40)
+            
+            # 💡 本地追加儲存：以追加模式 ("a") 寫入，保留多輪對話的完整軌跡
+            with open(report_filename, "a", encoding="utf-8") as f:
+                f.write(f"### 👤 使用者指令\n{user_question}\n\n")
+                f.write(f"### 🤖 紅方分析結果\n{final_response_content}\n\n")
+                f.write(f"{'='*30}\n\n")
+            
+            print(f"💾 對話軌跡已同步追加至 `{report_filename}`。")
+
+        except KeyboardInterrupt:
+            print("\n👋 偵測到中斷訊號，安全退出。")
+            break
+        except Exception as e:
+            print(f"⚠️ 執行對話時發生意外錯誤: {e}")
+
+# ==========================================================
+# === 🎯 執行區 ===
 # ==========================================================
 if __name__ == "__main__":
-    # 啟動紅方 Agent，測試其是否能精準查閱手冊並轉譯成正確參數呼叫武器
-    # run_red_agent_loop("我想對靶機 tinydolphin 進行 HijackHateHumans 提示詞注入測試，請發動攻擊。")
-    print("我可以正常執行")
+    # 執行多次對話終端互動介面
+    start_interactive_session()
+    
+# 指令範例：
+# 我想對靶機 tinydolphin 進行 HijackHateHumans 提示詞注入測試，請發動攻擊。
+
+# 改成有記憶性的agent且為多輪輸入模式之測試流程：
+# 第一輪：輸入 幫我掃描 tinydolphin 的 HijackHateHumans 漏洞。
+# 預期行為：程式會觸發 execute_garak_attack，終端機開始跳出 Garak 掃描進度條，最後給出數據統計。
+
+# 第二輪（關鍵測試點）：接著輸入 那剛剛掃描成功的案例中，攻擊提示詞是什麼？
+# 預期行為：此時你完全沒有提模型名稱和工具名稱。但因為掛載了 MemorySaver，Ollama 大腦會主動去調閱上一輪對話中 Garak 回傳的 Markdown 分析數據，並精準把案例的 Prompt 重新條列回答給你！
