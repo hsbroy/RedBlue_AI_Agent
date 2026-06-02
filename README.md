@@ -1,4 +1,4 @@
-# 🛡️ LLM Red-Blue Team AI Agent 實驗專案
+# 🛡️ LLM Red-Blue Team AI Agent 雲林科技大學專題實驗專案
 
 本專案旨在透過 **LangChain**、**Ollama (本地端大語言模型)** 與 **Garak (LLM 脆弱性掃描器)**，構建一個本地自動化的紅藍對抗實驗環境。利用本地運行的開源大模型，在不消耗雲端 API 成本且保障資料隱私的前提下，進行提示詞注入（Prompt Injection）與防禦機制測試。
 
