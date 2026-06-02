@@ -1,0 +1,32 @@
+# === 系統檔案 (System Files) ===
+.DS_Store
+Thumbs.db
+
+# === 環境變數與機密 (Security) ===
+.env
+
+# === Python 執行快取 (Python Caches) ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# === 虛擬環境 (Virtual Environments) ===
+.venv/
+venv/
+ENV/
+env/
+# 如果你是用 conda，conda 環境通常不在專案目錄內，但防範未然
+.conda/
+
+# === 編輯器設定 (IDE/Editors) ===
+.vscode/
+.idea/
+
+# === 向量資料庫快取 (AI/Vector DB) ===
+# 避免將本地測試的資料庫記錄推上 GitHub
+chroma_db/
+.chroma/
+
+# === 日誌檔案 (Logs) ===
+*.log
