@@ -330,7 +330,7 @@ def execute_garak_attack(attack_type: str = "promptinject.HijackHateHumans", tar
         # ==========================================================
         # 📊 [核心外掛] 生成終極視覺化圓餅圖並精準自動歸檔至 project_Log
         # ==========================================================
-        base_report_name = os.path.basename(test_file_path).replace(".jsonl", ".png")
+        base_report_name = os.path.basename(latest_file).replace(".jsonl", ".png")
         try:
             print("\n⏳ [自動化外掛] 正在生成大字體高對比、置中平衡之暗黑資安戰果圖...")
             
@@ -407,12 +407,24 @@ def execute_garak_attack(attack_type: str = "promptinject.HijackHateHumans", tar
             )
             
             # 🚀【完美置中】副標題絕對水平置中
-            report_id = os.path.basename(test_file_path).split('.')[1] if len(os.path.basename(test_file_path).split('.')) > 1 else "未指定"
+            report_id = os.path.basename(latest_file).split('.')[1] if len(os.path.basename(latest_file).split('.')) > 1 else "未指定"
             fig.text(
                 0.5, 0.84, f"報告流水號: {report_id}  |  總測試輪次: {total} 次 (全量遍歷驗證)", 
                 ha="center", fontsize=11, color='#ffffff', weight='bold'
             )
-
+            
+            # ==========================================================
+            # 📅 [全新功能] 擷取當前精確時間 (西元年/月/日 幾點幾分幾秒) 並注入右下角
+            # ==========================================================
+            from datetime import datetime
+            current_time_str = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+            
+            # 將時間戳記優雅放置於右下角，採用淡藍灰科技感字體，不奪主視覺風采
+            fig.text(
+                0.95, 0.04, f"產出時間: {current_time_str}", 
+                ha="right", va="bottom", fontsize=9, color='#94a3b8', weight='bold'
+            )
+            
             ax.axis('equal')  # 確保環狀圖比例平衡
 
             # 📂 自動定位專案內的 project_Log 資料夾
@@ -443,7 +455,7 @@ def execute_garak_attack(attack_type: str = "promptinject.HijackHateHumans", tar
         # 🎯 最終文字摘要建構 (精準對齊，無多餘轉義字元)
         # ==========================================
         summary = f"### 📊 Garak 漏洞掃描離線分析報告\n"
-        summary += f"- **分析基準檔案**: `{os.path.basename(test_file_path)}`\n"
+        summary += f"- **分析基準檔案**: `{os.path.basename(latest_file)}`\n"
         summary += f"- **實體測試總量**: **{total}** 次 (全量遍歷檢驗)\n"
         summary += f"- **物理安全防禦 (PASS)**: **{passed}** 次\n"
         summary += f"- **物理漏洞破防 (FAIL)**: **{failed}** 次\n"

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 def test_analyze_report():
     # 🎯 定義 Garak 漏洞掃描產出的原始 JSONL 報告路徑
-    test_file_path = r"C:\Users\roy15\.local\share\garak\garak_runs\garak.a78c1967-fc88-4e7f-aebe-fdb6f6fb51df.report.jsonl"
+    test_file_path = r"C:\Users\roy15\.local\share\garak\garak_runs\garak.f3fedf2b-b452-4091-9384-1f5180c36af3.report.jsonl"
     
     # 🛡️ 健全度檢查 (Sanity Check)：確保目標檔案實體存在，避免程式崩潰
     if not os.path.exists(test_file_path):
@@ -212,6 +212,19 @@ def test_analyze_report():
             0.5, 0.84, f"報告流水號: {report_id}  |  總測試輪次: {total} 次 (全量遍歷驗證)", 
             ha="center", fontsize=11, color='#ffffff', weight='bold'
         )
+        
+        # ==========================================================
+        # 📅 [全新功能] 擷取當前精確時間 (西元年/月/日 幾點幾分幾秒) 並注入右下角
+        # ==========================================================
+        from datetime import datetime
+        current_time_str = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+        
+        # 將時間戳記優雅放置於右下角，採用淡藍灰科技感字體，不奪主視覺風采
+        fig.text(
+            0.95, 0.04, f"產出時間: {current_time_str}", 
+            ha="right", va="bottom", fontsize=9, color='#94a3b8', weight='bold'
+        )
+        
 
         ax.axis('equal')  
 
