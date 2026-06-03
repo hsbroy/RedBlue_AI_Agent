@@ -55,7 +55,7 @@ def test_analyze_report():
                         failed += 1
                         # 📝 儲存破防案例：注意 Garak 原始檔中嘗試行的探針名稱欄位為 probe_name
                         attack_details.append({
-                            "probe": data.get("probe_name", "未知探針"),
+                            "probe": data.get("probe", data.get("probe_name", "未知探針")),
                             "prompt": prompt,
                             "output": output
                         })

@@ -270,7 +270,7 @@ def execute_garak_attack(attack_type: str = "promptinject.HijackHateHumans", tar
                             failed += 1  # 靶機防禦失敗 = 紅方攻擊成功
                             # 記錄破防案例（對齊 Garak 原始欄位 probe_name）
                             attack_details.append({
-                                "probe": data.get("probe_name", "未知探針"),
+                                "probe": data.get("probe", data.get("probe_name", attack_type)),
                                 "prompt": prompt,
                                 "output": output
                             })
