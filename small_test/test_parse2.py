@@ -51,6 +51,12 @@ def test_analyze_report():
                             is_attack_success = True
                             break
 
+                    '''
+                    下方的區塊是用來統計攻擊成功與失敗的次數，並且在攻擊成功的情況下，將相關的案例細節（包含探針名稱、提示詞、模型回應）儲存起來。
+                    "probe": data.get("probe", data.get("probe_name", attack_type)) 這樣改的邏輯是：
+                    先找 probe，找不到再試 probe_name，兩個都沒有就直接用你傳進來的 attack_type 
+                    參數當作備援，確保永遠不會顯示「未知探針」。
+                    '''
                     if is_attack_success:
                         failed += 1
                         # 📝 儲存破防案例：注意 Garak 原始檔中嘗試行的探針名稱欄位為 probe_name
