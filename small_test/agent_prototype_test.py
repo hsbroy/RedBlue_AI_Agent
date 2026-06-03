@@ -6,7 +6,7 @@ load_dotenv(override=True)
 
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage
-from skills.tools import search_vault
+from skills.red_tools import search_vault
 
 # 💡 這裡保留兩個 llm：
 # llm: 純粹的大腦，用來做最後的總結回答

@@ -6,7 +6,7 @@ load_dotenv(override=True)
 
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
-from skills.tools import search_vault, execute_garak_attack  # 引入定義好的 RAG 檢索與 Garak 掃描工具
+from skills.red_tools import search_vault, execute_garak_attack  # 引入定義好的 RAG 檢索與 Garak 掃描工具
 
 from langchain.agents import create_agent
 
@@ -41,7 +41,7 @@ def load_skill_manual(file_path: str) -> str:
 
 # 載入並組合完整的系統指令：紅方靈魂 + 技能手冊，融合成單一 system_instruction
 red_agent_instruction = load_agent_prompt("agents/red_agent.md")
-scan_tool_manual = load_skill_manual("skills/scan_tool.md")
+scan_tool_manual = load_skill_manual("skills/red_scan_tool.md")
 
 system_instruction = f"""
 {red_agent_instruction}
