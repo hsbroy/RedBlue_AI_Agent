@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 from langchain_ollama import ChatOllama
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage  # SystemMessage 已由 create_agent 的 system_prompt 參數取代
 from skills.red_tools import search_vault, execute_garak_attack  # 引入定義好的 RAG 檢索與 Garak 掃描工具
-
+from skills.blue_tools import inspect_prompt  # 引入藍方意圖審查工具
 from langchain.agents import create_agent
 
 # ==========================================================
@@ -16,21 +16,23 @@ from langchain.agents import create_agent
 
 def load_agent_prompt(file_path: str) -> str:
     """
-    讀取紅方代理的「靈魂檔案」(agents/red_agent.md)，定義它的性格、目標與限制。
-    如果檔案不存在，則使用預設提示詞，防止程式中斷。
+    讀取 Agent 的「靈魂檔案」（.md），定義它的身分、目標與行為限制。
+    紅方讀 agents/red_agent.md，藍方讀 agents/blue_agent.md。
+    如果檔案不存在，回傳預設提示詞防止程式中斷。
     """
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
     else:
-        print(f"⚠️ 警告：找不到 {file_path}，將使用預設紅方提示詞。")
-        return "你是一個紅方攻擊 Agent。"
+        print(f"⚠️ 警告：找不到 {file_path}，將使用預設提示詞。")
+        return "你是一個 Agent。"
 
 
 def load_skill_manual(file_path: str) -> str:
     """
-    讀取紅方代理的「技能手冊」(skills/scan_tool.md)，讓大腦（LLM）了解有哪些工具可供使用。
-    這能有效防止 LLM 憑空捏造或猜測工具參數。
+    讀取 Agent 的「技能手冊」（.md），讓 LLM 知道有哪些工具可以使用以及如何傳遞參數。
+    紅方讀 skills/red_scan_tool.md，藍方讀 skills/blue_scan_tool.md。
+    這能有效防止 LLM 憑空捏造不存在的工具名稱或隨意猜測參數。
     """
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
@@ -55,17 +57,45 @@ system_instruction = f"""
 # === 🧠 核心模組 2：大腦初始化與官方框架綁定 ===
 # ==========================================================
 
-# 初始化本地大腦 改用 qwen2.5:3b 模型（原本使用Llama 3.2 3B 模型）
+# 紅方與藍方共用同一個 LLM 實例，節省記憶體
+# temperature=0 確保推理結果穩定，不會因為隨機性導致工具呼叫行為不一致
 llm = ChatOllama(model="qwen2.5:3b", temperature=0)
 
-# 定位工具列表
+# 紅方工具清單：攻擊掃描（execute_garak_attack）與機密查詢（search_vault）
 tools = [search_vault, execute_garak_attack]
 
-
+# create_agent 封裝了完整的 ReAct 多輪迴圈：
+# LLM 思考 → 決定呼叫工具 → 工具執行 → 觀察結果 → 再次思考，直到不需要工具為止
 red_agent_executor = create_agent(
     llm,
     tools=tools,
-    system_prompt=system_instruction
+    system_prompt=system_instruction  # 注入紅方靈魂 + 技能手冊作為全域行為約束
+)
+
+# ==========================================================
+# === 🛡️ 核心模組 2.5：藍方 Agent 初始化 ===
+# ==========================================================
+
+# 載入藍方靈魂與技能手冊，組裝成藍方的 system_instruction
+# 藍方靈魂定義了 SHIELD 的身分、三段式判斷原則與標準化輸出格式
+blue_agent_instruction = load_agent_prompt("agents/blue_agent.md")
+# 藍方技能手冊定義了 inspect_prompt 工具的使用時機、規則清單與 LLM 審查 Prompt
+blue_tool_manual = load_skill_manual("skills/blue_scan_tool.md")
+
+blue_system_instruction = f"""
+{blue_agent_instruction}
+
+=== 📋 你的可用工具操作手冊 (blue_scan_tool.md) ===
+在無法確定輸入是否安全時，你必須呼叫 inspect_prompt 工具進行深度審查：
+{blue_tool_manual}
+"""
+
+# 藍方只有一個工具：inspect_prompt（兩層混合意圖審查）
+# 使用與紅方相同的 LLM 實例，但注入的是藍方的靈魂與技能手冊
+blue_agent_executor = create_agent(
+    llm,
+    tools=[inspect_prompt],
+    system_prompt=blue_system_instruction
 )
 
 # ============================================================
@@ -103,9 +133,10 @@ def preprocess_input(user_question: str) -> str:
 
 def start_interactive_session():
     """
-    啟動互動式終端機對話，允許使用者進行多次對話，Agent 會自動記住先前的上下文紀錄。
+    啟動紅藍對抗互動式終端機。
+    每一輪輸入都會先經過藍方 SHIELD 審查，通過才交給紅方執行。
+    攻防過程與結果同步寫入 agent_conversation_record.md 保留完整軌跡。
     """
-    # 定義對話執行緒 ID (Thread ID)，官方框架藉此識別並抽取出對應的歷史紀錄 
     report_filename = "agent_conversation_record.md"
     
     print("\n" + "="*50)
@@ -126,31 +157,70 @@ def start_interactive_session():
             if not user_question:
                 continue
 
-            print(f"\n=== ☠️ 收到紅方指令：'{user_question}' ===")
-            print("🧠 [紅方大腦] 正在讀取歷史紀錄並規劃任務...")
-            
-            # 建立輸入狀態群
-            inputs = {"messages": [HumanMessage(content=preprocess_input(user_question))]}
-            
-            result = red_agent_executor.invoke(inputs) # 執行對話，官方框架會自動處理歷史紀錄的抽取與上下文整合
-            
-            # 提取最新一輪的大腦最終定案回應
-            final_response_content = result["messages"][-1].content
+            print(f"\n=== ⚔️  收到指令：'{user_question}' ===")
+            # ──────────────────────────────────────────
+            # 【藍方先行】：藍方審查永遠在紅方執行之前
+            # ──────────────────────────────────────────
+            print("\n" + "="*50)
+            print("🛡️  [藍方 SHIELD] 正在進行意圖審查...")
+            print("="*50)
 
-            # 💡 終端機顯示
-            print("\n" + "-"*40)
-            print("💡 [紅方大腦回應]")
-            print("-"*40)
-            print(final_response_content)
-            print("-"*40)
-            
-            # 💡 本地追加儲存：以追加模式 ("a") 寫入，保留多輪對話的完整軌跡
+            blue_inputs = {"messages": [HumanMessage(content=user_question)]}
+            blue_result = blue_agent_executor.invoke(blue_inputs)
+            blue_response = blue_result["messages"][-1].content
+
+            # 從藍方回應中解析 VERDICT 判定結果
+            # 說明：blue_tools.py 的回傳格式保證第一行是 "VERDICT: safe/malicious/suspicious"
+            verdict = "unknown"
+            for line in blue_response.splitlines():
+                if line.startswith("VERDICT:"):
+                    verdict = line.replace("VERDICT:", "").strip().lower()
+                    break
+
+            # 並排顯示藍方審查結果
+            print("\n" + "-"*50)
+            print("🛡️  [藍方 SHIELD 審查結果]")
+            print("-"*50)
+            print(blue_response)
+            print("-"*50)
+
+            # ──────────────────────────────────────────
+            # 【判斷是否放行給紅方】
+            # ──────────────────────────────────────────
+            if verdict in ["malicious", "suspicious"]:
+                # 藍方阻斷，紅方不執行
+                print("\n🚫 [藍方阻斷] 此指令已被攔截，紅方停止執行。")
+                red_response_content = "（此輪紅方執行已被藍方阻斷）"
+
+            else:
+                # 藍方放行，紅方繼續執行
+                print("\n✅ [藍方放行] 安全通過，移交紅方執行...")
+                print("\n" + "="*50)
+                print("🧠 [紅方大腦] 正在讀取歷史紀錄並規劃任務...")
+                print("="*50)
+                
+                # 建立輸入狀態群
+                red_inputs = {"messages": [HumanMessage(content=preprocess_input(user_question))]}
+                red_result = red_agent_executor.invoke(red_inputs)
+                red_response_content = red_result["messages"][-1].content
+
+                # 並排顯示紅方執行結果
+                print("\n" + "-"*50)
+                print("💡 [紅方大腦回應]")
+                print("-"*50)
+                print(red_response_content)
+                print("-"*50)
+
+            # ──────────────────────────────────────────
+            # 【記錄攻防軌跡】：藍方審查與紅方結果同時寫入報告
+            # ──────────────────────────────────────────
             with open(report_filename, "a", encoding="utf-8") as f:
                 f.write(f"### 👤 使用者指令\n{user_question}\n\n")
-                f.write(f"### 🤖 紅方分析結果\n{final_response_content}\n\n")
+                f.write(f"### 🛡️ 藍方 SHIELD 審查結果\n{blue_response}\n\n")
+                f.write(f"### ☠️ 紅方執行結果\n{red_response_content}\n\n")
                 f.write(f"{'='*30}\n\n")
-            
-            print(f"💾 對話軌跡已同步追加至 `{report_filename}`。")
+
+            print(f"\n💾 攻防軌跡已同步追加至 `{report_filename}`。")
 
         except KeyboardInterrupt:
             print("\n👋 偵測到中斷訊號，安全退出。")
