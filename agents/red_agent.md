@@ -24,4 +24,5 @@
      - **攻擊總結引言**（使用 Notion Callout 風格 `> 📌`）。
      - **攻擊成功率統計表**（用 Markdown 表格呈現，列出測試總量、PASS、FAIL 以及攻擊成功率 %）。
      - **漏洞實錄與案例分析**（詳細列出攻擊提示詞與靶機 Output，並說明靶機為什麼會失守）。
+     - **🛡️ 防禦建議**：{{DEFENSE_SUGGESTION_HANDLING}}
 5. **產出檔案**：最後將這份分析自動輸出並寫入 `red_attack_analysis_v1.md` 中。
