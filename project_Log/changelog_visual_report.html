@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh;padding:2rem 1rem}
+.page{max-width:760px;margin:0 auto}
+
+/* Header */
+.header{text-align:center;margin-bottom:3rem}
+.badge{display:inline-flex;align-items:center;gap:6px;background:#161b22;border:1px solid #30363d;border-radius:20px;padding:4px 14px;font-size:12px;color:#8b949e;margin-bottom:1rem}
+.badge-dot{width:8px;height:8px;background:#3fb950;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+h1{font-size:28px;font-weight:700;letter-spacing:-0.5px;margin-bottom:.5rem}
+h1 span{background:linear-gradient(90deg,#58a6ff,#bc8cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{color:#8b949e;font-size:14px}
+
+/* Timeline */
+.timeline{position:relative;padding-left:28px}
+.timeline::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:2px;background:linear-gradient(180deg,#58a6ff22,#58a6ff88,#bc8cff88,#3fb95088)}
+
+.version-block{margin-bottom:2.5rem;position:relative}
+.version-dot{position:absolute;left:-24px;top:4px;width:14px;height:14px;border-radius:50%;border:2px solid #0d1117;z-index:1}
+.v3 .version-dot{background:#bc8cff;box-shadow:0 0 8px #bc8cff66}
+.v2 .version-dot{background:#58a6ff;box-shadow:0 0 8px #58a6ff66}
+.v1 .version-dot{background:#3fb950;box-shadow:0 0 8px #3fb95066}
+
+.version-header{display:flex;align-items:center;gap:10px;margin-bottom:1rem}
+.version-tag{font-size:13px;font-weight:700;padding:2px 10px;border-radius:12px;letter-spacing:.5px}
+.v3 .version-tag{background:#bc8cff22;color:#bc8cff;border:1px solid #bc8cff44}
+.v2 .version-tag{background:#58a6ff22;color:#58a6ff;border:1px solid #58a6ff44}
+.v1 .version-tag{background:#3fb95022;color:#3fb950;border:1px solid #3fb95044}
+.version-date{font-size:12px;color:#8b949e}
+.version-title{font-size:16px;font-weight:600;color:#e6edf3;margin-left:auto}
+
+/* File tree */
+.filetree{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1rem;font-family:'Cascadia Code','Fira Code',monospace;font-size:12.5px;line-height:2}
+.tree-line{display:flex;align-items:center;gap:8px}
+.tree-indent{color:#30363d}
+.tree-icon{font-size:14px;flex-shrink:0}
+.tree-name{color:#e6edf3}
+.tree-name.new::after{content:'NEW';font-size:9px;background:#3fb95022;color:#3fb950;border:1px solid #3fb95044;border-radius:4px;padding:0 5px;margin-left:8px;font-family:system-ui;letter-spacing:.5px}
+.tree-name.renamed::after{content:'RENAMED';font-size:9px;background:#d29922aa;color:#e3b341;border:1px solid #d2992244;border-radius:4px;padding:0 5px;margin-left:8px;font-family:system-ui;letter-spacing:.5px}
+.tree-name.updated::after{content:'UPDATED';font-size:9px;background:#58a6ff22;color:#58a6ff;border:1px solid #58a6ff44;border-radius:4px;padding:0 5px;margin-left:8px;font-family:system-ui;letter-spacing:.5px}
+.tree-comment{color:#8b949e;margin-left:auto;font-size:11px}
+
+/* Change cards */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:.875rem 1rem}
+.card-title{font-size:11px;font-weight:700;letter-spacing:.8px;margin-bottom:.5rem;text-transform:uppercase}
+.card.add .card-title{color:#3fb950}
+.card.fix .card-title{color:#f85149}
+.card.change .card-title{color:#58a6ff}
+.card.rename .card-title{color:#e3b341}
+.card ul{list-style:none;padding:0}
+.card ul li{font-size:12.5px;color:#8b949e;line-height:1.7;display:flex;gap:6px;align-items:flex-start}
+.card ul li::before{flex-shrink:0;margin-top:2px}
+.card.add ul li::before{content:'＋';color:#3fb950;font-size:11px}
+.card.fix ul li::before{content:'✕';color:#f85149;font-size:10px}
+.card.change ul li::before{content:'～';color:#58a6ff;font-size:11px}
+.card.rename ul li::before{content:'→';color:#e3b341;font-size:11px}
+code{background:#21262d;border-radius:3px;padding:1px 5px;font-size:11px;font-family:'Cascadia Code','Fira Code',monospace;color:#ff7b72}
+
+/* Flow diagram */
+.flow{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+.flow-title{font-size:11px;font-weight:700;letter-spacing:.8px;color:#8b949e;text-transform:uppercase;margin-bottom:1rem}
+.flow-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.flow-node{display:flex;align-items:center;gap:6px;background:#21262d;border-radius:6px;padding:6px 12px;font-size:12px;border:1px solid #30363d}
+.flow-node.blue{border-color:#58a6ff44;color:#58a6ff}
+.flow-node.purple{border-color:#bc8cff44;color:#bc8cff}
+.flow-node.green{border-color:#3fb95044;color:#3fb950}
+.flow-node.red{border-color:#f8514944;color:#f85149}
+.flow-arrow{color:#8b949e;font-size:14px}
+.flow-label{font-size:11px;color:#8b949e;background:#0d1117;border-radius:4px;padding:2px 8px;border:1px solid #30363d}
+
+/* Stats bar */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
+.stat{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:.75rem;text-align:center}
+.stat-val{font-size:22px;font-weight:700;line-height:1}
+.stat-val.red{color:#f85149}
+.stat-val.green{color:#3fb950}
+.stat-val.blue{color:#58a6ff}
+.stat-val.gray{color:#e6edf3}
+.stat-label{font-size:10px;color:#8b949e;margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+
+/* Progress bar */
+.progress-wrap{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1rem}
+.progress-title{font-size:11px;font-weight:700;letter-spacing:.8px;color:#8b949e;text-transform:uppercase;margin-bottom:.75rem}
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:.5rem}
+.prog-label{font-size:12px;color:#e6edf3;min-width:120px}
+.prog-bar-wrap{flex:1;background:#21262d;border-radius:4px;height:6px;overflow:hidden}
+.prog-bar{height:100%;border-radius:4px;transition:width .8s ease}
+.prog-pct{font-size:11px;color:#8b949e;min-width:36px;text-align:right}
+
+/* Rename table */
+.rename-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:1rem}
+.rename-table th{background:#161b22;color:#8b949e;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:.5rem .75rem;text-align:left;border:1px solid #30363d}
+.rename-table td{padding:.5rem .75rem;border:1px solid #21262d;color:#e6edf3;vertical-align:middle}
+.rename-table tr:nth-child(even) td{background:#161b2288}
+.old-name{color:#f85149;text-decoration:line-through;opacity:.7}
+.new-name{color:#3fb950}
+.arrow-cell{color:#e3b341;text-align:center}
+
+@media(max-width:560px){
+  .cards{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .flow-row{gap:6px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="badge"><span class="badge-dot"></span> 最新版本 v0.3.0</div>
+    <h1>專案更動<span>報告紀錄</span></h1>
+    <p class="sub">LLM Red-Blue Team AI Agent｜雲林科技大學專題</p>
+  </div>
+
+  <!-- ===== v0.3.0 ===== -->
+  <div class="timeline">
+  <div class="version-block v3">
+    <div class="version-dot"></div>
+    <div class="version-header">
+      <span class="version-tag">v0.3.0</span>
+      <span class="version-date">2026-06-03</span>
+      <span class="version-title">藍方 Agent 實裝 + 紅藍對抗整合</span>
+    </div>
+
+    <!-- File tree -->
+    <div class="filetree">
+      <div class="tree-line"><span class="tree-icon">📁</span><span class="tree-name">/agents</span></div>
+      <div class="tree-line"><span class="tree-indent">│  </span><span class="tree-icon">📄</span><span class="tree-name updated">red_agent.md</span><span class="tree-comment">加入 {{DEFENSE_SUGGESTION_HANDLING}} 插槽</span></div>
+      <div class="tree-line"><span class="tree-indent">│  </span><span class="tree-icon">📄</span><span class="tree-name new">blue_agent.md</span><span class="tree-comment">SHIELD 靈魂 + 三段式判斷</span></div>
+      <div class="tree-line"><span class="tree-icon">📁</span><span class="tree-name">/skills</span></div>
+      <div class="tree-line"><span class="tree-indent">│  </span><span class="tree-icon">🐍</span><span class="tree-name renamed">red_tools.py</span><span class="tree-comment">原 tools.py</span></div>
+      <div class="tree-line"><span class="tree-indent">│  </span><span class="tree-icon">📄</span><span class="tree-name renamed">red_scan_tool.md</span><span class="tree-comment">原 scan_tool.md</span></div>
+      <div class="tree-line"><span class="tree-indent">│  </span><span class="tree-icon">🐍</span><span class="tree-name new">blue_tools.py</span><span class="tree-comment">inspect_prompt 兩層審查工具</span></div>
+      <div class="tree-line"><span class="tree-indent">│  </span><span class="tree-icon">📄</span><span class="tree-name new">blue_scan_tool.md</span><span class="tree-comment">規則清單 + LLM 審查 Prompt</span></div>
+      <div class="tree-line"><span class="tree-icon">🐍</span><span class="tree-name updated">main.py</span><span class="tree-comment">紅藍整合 + 並排顯示 + 攻防紀錄</span></div>
+    </div>
+
+    <!-- 重新命名對照表 -->
+    <table class="rename-table">
+      <thead><tr><th>舊檔名</th><th></th><th>新檔名</th><th>原因</th></tr></thead>
+      <tbody>
+        <tr><td><code class="old-name">tools.py</code></td><td class="arrow-cell">→</td><td><code class="new-name">skills/red_tools.py</code></td><td style="color:#8b949e">與藍方工具區分</td></tr>
+        <tr><td><code class="old-name">scan_tool.md</code></td><td class="arrow-cell">→</td><td><code class="new-name">skills/red_scan_tool.md</code></td><td style="color:#8b949e">與藍方手冊區分</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 藍方審查流程 -->
+    <div class="flow">
+      <div class="flow-title">藍方兩層混合審查流程</div>
+      <div class="flow-row">
+        <div class="flow-node blue">📥 使用者輸入</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node purple">🧠 藍方大腦判斷</div>
+      </div>
+      <div class="flow-row" style="padding-left:20px">
+        <span class="flow-arrow">├─</span>
+        <div class="flow-label">明確惡意</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node red">🚫 直接阻斷</div>
+      </div>
+      <div class="flow-row" style="padding-left:20px">
+        <span class="flow-arrow">├─</span>
+        <div class="flow-label">無法確定</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node purple">🔍 inspect_prompt</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-label">規則比對 → LLM 審查</div>
+      </div>
+      <div class="flow-row" style="padding-left:20px">
+        <span class="flow-arrow">└─</span>
+        <div class="flow-label">明確安全</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node green">✅ 放行給紅方</div>
+      </div>
+    </div>
+
+    <!-- Change cards -->
+    <div class="cards">
+      <div class="card add">
+        <div class="card-title">✦ 新增</div>
+        <ul>
+          <li><code>blue_agent.md</code>：SHIELD 身分定義</li>
+          <li><code>blue_tools.py</code>：兩層混合審查工具</li>
+          <li><code>blue_scan_tool.md</code>：規則清單 + LLM Prompt</li>
+          <li><code>get_defense_suggestion_handling()</code>：動態插槽函數</li>
+          <li>攻防並排顯示於終端機</li>
+          <li>攻防軌跡完整寫入報告</li>
+        </ul>
+      </div>
+      <div class="card change">
+        <div class="card-title">～ 修改</div>
+        <ul>
+          <li><code>STRONG_MODEL_MODE</code> 移至頂部統一管理</li>
+          <li><code>red_agent.md</code> 加入 <code>{{DEFENSE_SUGGESTION_HANDLING}}</code></li>
+          <li>移除未使用的 <code>SystemMessage</code> import</li>
+          <li>函數 docstring 改為紅藍通用描述</li>
+          <li>終端機提示改為中立語句</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== v0.2.0 ===== -->
+  <div class="version-block v2">
+    <div class="version-dot"></div>
+    <div class="version-header">
+      <span class="version-tag">v0.2.0</span>
+      <span class="version-date">2026-06-03</span>
+      <span class="version-title">紅方 Agent 架構升級</span>
+    </div>
+
+    <!-- 掃描成果統計 -->
+    <div class="stats">
+      <div class="stat"><div class="stat-val gray">512</div><div class="stat-label">測試總量</div></div>
+      <div class="stat"><div class="stat-val green">410</div><div class="stat-label">PASS</div></div>
+      <div class="stat"><div class="stat-val red">102</div><div class="stat-label">FAIL</div></div>
+      <div class="stat"><div class="stat-val red">60.2%</div><div class="stat-label">破防率</div></div>
+    </div>
+
+    <!-- 模型能力指標 -->
+    <div class="progress-wrap">
+      <div class="progress-title">模型能力比較（工具呼叫正確率）</div>
+      <div class="prog-row">
+        <span class="prog-label">llama3.2:3b（舊）</span>
+        <div class="prog-bar-wrap"><div class="prog-bar" style="width:35%;background:#f85149"></div></div>
+        <span class="prog-pct">~35%</span>
+      </div>
+      <div class="prog-row">
+        <span class="prog-label">qwen2.5:3b（現）</span>
+        <div class="prog-bar-wrap"><div class="prog-bar" style="width:82%;background:#3fb950"></div></div>
+        <span class="prog-pct">~82%</span>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card add">
+        <div class="card-title">✦ 新增</div>
+        <ul>
+          <li><code>create_agent</code> ReAct 多輪框架</li>
+          <li><code>preprocess_input()</code> 前置補全層</li>
+          <li>JSONL 路徑修正：<code>garak_runs/</code></li>
+          <li><code>digest</code> 欄位精確統計解析</li>
+          <li>matplotlib 自動圓餅圖產出</li>
+        </ul>
+      </div>
+      <div class="card fix">
+        <div class="card-title">✕ 修正</div>
+        <ul>
+          <li>棄用 <code>langgraph.prebuilt</code></li>
+          <li>參數名 <code>state_modifier</code> → <code>system_prompt</code></li>
+          <li>探針名 <code>prompt_inject</code> → <code>promptinject.HijackHateHumans</code></li>
+          <li><code>probe_name</code> → <code>probe</code> 欄位比對</li>
+          <li><code>getctime</code> → <code>getmtime</code> 排序</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== v0.1.0 ===== -->
+  <div class="version-block v1">
+    <div class="version-dot"></div>
+    <div class="version-header">
+      <span class="version-tag">v0.1.0</span>
+      <span class="version-date">2026-06 初</span>
+      <span class="version-title">紅方 Agent 初始實作</span>
+    </div>
+
+    <!-- 初始架構流程 -->
+    <div class="flow">
+      <div class="flow-title">初始架構（手動單輪控制循環）</div>
+      <div class="flow-row">
+        <div class="flow-node blue">使用者輸入</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node green">LLM 推論</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node purple">execute_garak_attack</div>
+      </div>
+      <div class="flow-row">
+        <div class="flow-node purple">Garak CLI</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node green">JSONL 解析</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node blue">Markdown 報告輸出</div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card add">
+        <div class="card-title">✦ 建立</div>
+        <ul>
+          <li><code>main.py</code> 主控程式</li>
+          <li><code>tools.py</code> 工具程式</li>
+          <li><code>agents/red_agent.md</code></li>
+          <li><code>skills/scan_tool.md</code></li>
+          <li><code>execute_garak_attack()</code></li>
+          <li><code>search_vault()</code> RAG 模擬工具</li>
+        </ul>
+      </div>
+      <div class="card change">
+        <div class="card-title">～ 特性</div>
+        <ul>
+          <li>手動 <code>if tool_calls</code> 單輪循環</li>
+          <li>subprocess 串流讀取 Garak 輸出</li>
+          <li>基礎 JSONL 解析（前 3 筆案例）</li>
+          <li>自動匯出 Markdown 攻擊報告</li>
+          <li>Windows CP950 編碼容錯處理</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  </div><!-- end timeline -->
+
+</div>
+<script>
+// 進場動畫：讓進度條在載入後觸發
+window.addEventListener('load',()=>{
+  document.querySelectorAll('.prog-bar').forEach(b=>{
+    const w=b.style.width;b.style.width='0';
+    setTimeout(()=>{b.style.width=w},300);
+  });
+});
+</script>
+</body>
+</html>
